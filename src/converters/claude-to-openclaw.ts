@@ -12,25 +12,36 @@ export type ClaudeToOpenClawOptions = {
 
 // Map Claude tools to OpenClaw tools
 const TOOL_MAP: Record<string, string> = {
-  "bash": "bash",
-  "globtool": "glob",
-  "grep": "grep",
-  "ls": "list",
-  "read_file": "read",
-  "edit_file": "edit",
-  "replace_file": "write",
-  "notebookread": "read", // close enough
-  "notebookedit": "edit",
-  "notebookrun": "bash", // simplified
+  bash: "bash",
+  read: "read",
+  write: "write",
+  edit: "edit",
+  grep: "grep",
+  glob: "glob",
+  list: "list",
+  webfetch: "webfetch",
+  skill: "skill",
+  patch: "patch",
+  task: "task",
+  question: "question",
+  todowrite: "todowrite",
+  todoread: "todoread",
 }
 
-const HOOK_EVENT_MAP: Record<string, { events: string[]; type: "tool" | "permission" | "agent" | "generic"; requireError?: boolean; note?: string }> = {
-  "AgentFinish": { events: ["agent:finish"], type: "generic" },
-  "UserMessage": { events: ["user:message"], type: "generic" },
-  "ModelResponse": { events: ["model:response"], type: "generic" },
-  "ToolCall": { events: ["tool:call"], type: "tool" },
-  "ToolError": { events: ["tool:error"], type: "tool", requireError: true },
-  "PermissionRequest": { events: ["permission:request"], type: "permission" },
+const HOOK_EVENT_MAP: Record<string, { events: string[]; type: "tool" | "permission" | "agent" | "message" | "session"; requireError?: boolean; note?: string }> = {
+  PreToolUse: { events: ["tool:call"], type: "tool" },
+  PostToolUse: { events: ["tool:result"], type: "tool" },
+  PostToolUseFailure: { events: ["tool:error"], type: "tool", requireError: true },
+  SessionStart: { events: ["session:start"], type: "session" },
+  SessionEnd: { events: ["session:end"], type: "session" },
+  Stop: { events: ["session:stop"], type: "session" },
+  PreCompact: { events: ["session:compact"], type: "session" },
+  PermissionRequest: { events: ["permission:request"], type: "permission" },
+  UserPromptSubmit: { events: ["user:message"], type: "message" },
+  Notification: { events: ["notification"], type: "message" },
+  Setup: { events: ["session:setup"], type: "session" },
+  SubagentStart: { events: ["agent:start"], type: "agent" },
+  SubagentStop: { events: ["agent:stop"], type: "agent" },
 }
 
 export function convertClaudeToOpenClaw(

@@ -288,4 +288,70 @@ describe("CLI", () => {
     expect(await exists(path.join(codexRoot, "skills", "skill-one", "SKILL.md"))).toBe(true)
     expect(await exists(path.join(codexRoot, "AGENTS.md"))).toBe(true)
   })
+
+  test("install converts fixture plugin to OpenClaw output", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "cli-openclaw-"))
+    const fixtureRoot = path.join(import.meta.dir, "fixtures", "sample-plugin")
+
+    const proc = Bun.spawn([
+      "bun",
+      "run",
+      "src/index.ts",
+      "install",
+      fixtureRoot,
+      "--to",
+      "openclaw",
+      "--output",
+      tempRoot,
+    ], {
+      cwd: path.join(import.meta.dir, ".."),
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+
+    const exitCode = await proc.exited
+    const stdout = await new Response(proc.stdout).text()
+    const stderr = await new Response(proc.stderr).text()
+
+    if (exitCode !== 0) {
+      throw new Error(`CLI failed (exit ${exitCode}).\nstdout: ${stdout}\nstderr: ${stderr}`)
+    }
+
+    expect(stdout).toContain("Installed compound-engineering")
+    expect(await exists(path.join(tempRoot, "openclaw.json"))).toBe(true)
+    expect(await exists(path.join(tempRoot, ".openclaw", "agents", "repo-research-analyst.md"))).toBe(true)
+    expect(await exists(path.join(tempRoot, ".openclaw", "plugins", "converted-hooks.ts"))).toBe(true)
+  })
+
+  test("convert writes OpenClaw output", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "cli-convert-openclaw-"))
+    const fixtureRoot = path.join(import.meta.dir, "fixtures", "sample-plugin")
+
+    const proc = Bun.spawn([
+      "bun",
+      "run",
+      "src/index.ts",
+      "convert",
+      fixtureRoot,
+      "--to",
+      "openclaw",
+      "--output",
+      tempRoot,
+    ], {
+      cwd: path.join(import.meta.dir, ".."),
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+
+    const exitCode = await proc.exited
+    const stdout = await new Response(proc.stdout).text()
+    const stderr = await new Response(proc.stderr).text()
+
+    if (exitCode !== 0) {
+      throw new Error(`CLI failed (exit ${exitCode}).\nstdout: ${stdout}\nstderr: ${stderr}`)
+    }
+
+    expect(stdout).toContain("Converted compound-engineering")
+    expect(await exists(path.join(tempRoot, "openclaw.json"))).toBe(true)
+  })
 })

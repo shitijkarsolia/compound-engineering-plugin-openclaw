@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import path from "path"
 import { loadClaudePlugin } from "../src/parsers/claude"
 import { convertClaudeToOpenCode } from "../src/converters/claude-to-opencode"
+import { convertClaudeToOpenClaw } from "../src/converters/claude-to-openclaw"
 import { parseFrontmatter } from "../src/utils/frontmatter"
 
 const fixtureRoot = path.join(import.meta.dir, "fixtures", "sample-plugin")
@@ -182,5 +183,81 @@ describe("convertClaudeToOpenCode", () => {
 
     // Normal commands should still be present
     expect(bundle.config.command?.["workflows:review"]).toBeDefined()
+  })
+})
+
+describe("convertClaudeToOpenClaw", () => {
+  test("maps commands, permissions, and agents", async () => {
+    const plugin = await loadClaudePlugin(fixtureRoot)
+    const bundle = convertClaudeToOpenClaw(plugin, {
+      agentMode: "subagent",
+      inferTemperature: false,
+      permissions: "from-commands",
+    })
+
+    expect(bundle.config.command?.["workflows:review"]).toBeDefined()
+    expect(bundle.config.command?.["plan_review"]).toBeDefined()
+
+    const permission = bundle.config.permission as Record<string, string | Record<string, string>>
+    expect(Object.keys(permission).sort()).toEqual([
+      "bash",
+      "edit",
+      "glob",
+      "grep",
+      "list",
+      "patch",
+      "question",
+      "read",
+      "skill",
+      "task",
+      "todoread",
+      "todowrite",
+      "webfetch",
+      "write",
+    ])
+    expect(permission.edit).toBe("allow")
+    expect(permission.write).toBe("allow")
+    const bashPermission = permission.bash as Record<string, string>
+    expect(bashPermission["ls *"]).toBe("allow")
+    expect(bashPermission["git *"]).toBe("allow")
+    expect(permission.webfetch).toBe("allow")
+
+    const readPermission = permission.read as Record<string, string>
+    expect(readPermission["*"]).toBe("deny")
+    expect(readPermission[".env"]).toBe("allow")
+
+    expect(permission.question).toBe("allow")
+    expect(permission.todowrite).toBe("allow")
+    expect(permission.todoread).toBe("allow")
+
+    const agentFile = bundle.agents.find((agent) => agent.name === "repo-research-analyst")
+    expect(agentFile).toBeDefined()
+    const parsed = parseFrontmatter(agentFile!.content)
+    expect(parsed.data.mode).toBe("subagent")
+  })
+
+  test("converts hooks into plugin file", async () => {
+    const plugin = await loadClaudePlugin(fixtureRoot)
+    const bundle = convertClaudeToOpenClaw(plugin, {
+      agentMode: "subagent",
+      inferTemperature: false,
+      permissions: "none",
+    })
+
+    const hookFile = bundle.plugins.find((file) => file.name === "converted-hooks.ts")
+    expect(hookFile).toBeDefined()
+    expect(hookFile!.content).toContain("import type { Plugin } from \"@openclaw-ai/plugin\"")
+    // OpenClaw hook events
+    expect(hookFile!.content).toContain("\"tool:call\"")
+    expect(hookFile!.content).toContain("\"tool:error\"")
+    // These are from fixture keys:
+    // PreToolUse -> tool:call
+    // PostToolUse -> tool:result
+    // PostToolUseFailure -> tool:error
+    // UserPromptSubmit -> user:message
+    // PermissionRequest -> permission:request
+    expect(hookFile!.content).toContain("\"tool:result\"")
+    expect(hookFile!.content).toContain("\"user:message\"")
+    expect(hookFile!.content).toContain("\"permission:request\"")
   })
 })
