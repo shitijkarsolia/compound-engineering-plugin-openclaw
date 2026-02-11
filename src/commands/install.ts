@@ -24,7 +24,7 @@ export default defineCommand({
     to: {
       type: "string",
       default: "opencode",
-      description: "Target format (opencode | codex)",
+      description: "Target format (opencode | codex | openclaw)",
     },
     output: {
       type: "string",
@@ -75,7 +75,7 @@ export default defineCommand({
 
     try {
       const plugin = await loadClaudePlugin(resolvedPlugin.path)
-      const outputRoot = resolveOutputRoot(args.output)
+      const outputRoot = resolveOutputRoot(args.output, targetName)
       const codexHome = resolveCodexRoot(args.codexHome)
 
       const options = {
@@ -170,10 +170,13 @@ function expandHome(value: string): string {
   return value
 }
 
-function resolveOutputRoot(value: unknown): string {
+function resolveOutputRoot(value: unknown, target?: string): string {
   if (value && String(value).trim()) {
     const expanded = expandHome(String(value).trim())
     return path.resolve(expanded)
+  }
+  if (target === "openclaw") {
+    return path.join(os.homedir(), ".config", "openclaw")
   }
   // OpenCode global config lives at ~/.config/opencode per XDG spec
   // See: https://opencode.ai/docs/config/

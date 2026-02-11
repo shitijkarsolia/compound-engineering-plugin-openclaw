@@ -3,10 +3,11 @@ import os from "os"
 import path from "path"
 import { loadClaudeHome } from "../parsers/claude-home"
 import { syncToOpenCode } from "../sync/opencode"
+import { syncToOpenClaw } from "../sync/openclaw"
 import { syncToCodex } from "../sync/codex"
 
-function isValidTarget(value: string): value is "opencode" | "codex" {
-  return value === "opencode" || value === "codex"
+function isValidTarget(value: string): value is "opencode" | "codex" | "openclaw" {
+  return value === "opencode" || value === "codex" || value === "openclaw"
 }
 
 /** Check if any MCP servers have env vars that might contain secrets */
@@ -26,13 +27,13 @@ function hasPotentialSecrets(mcpServers: Record<string, unknown>): boolean {
 export default defineCommand({
   meta: {
     name: "sync",
-    description: "Sync Claude Code config (~/.claude/) to OpenCode or Codex",
+    description: "Sync Claude Code config (~/.claude/) to OpenCode, OpenClaw or Codex",
   },
   args: {
     target: {
       type: "string",
       required: true,
-      description: "Target: opencode | codex",
+      description: "Target: opencode | codex | openclaw",
     },
     claudeHome: {
       type: "string",
@@ -42,7 +43,7 @@ export default defineCommand({
   },
   async run({ args }) {
     if (!isValidTarget(args.target)) {
-      throw new Error(`Unknown target: ${args.target}. Use 'opencode' or 'codex'.`)
+      throw new Error(`Unknown target: ${args.target}. Use 'opencode', 'codex', or 'openclaw'.`)
     }
 
     const claudeHome = expandHome(args.claudeHome ?? path.join(os.homedir(), ".claude"))
@@ -60,13 +61,19 @@ export default defineCommand({
       `Syncing ${config.skills.length} skills, ${Object.keys(config.mcpServers).length} MCP servers...`,
     )
 
-    const outputRoot =
-      args.target === "opencode"
-        ? path.join(os.homedir(), ".config", "opencode")
-        : path.join(os.homedir(), ".codex")
+    let outputRoot: string
+    if (args.target === "opencode") {
+      outputRoot = path.join(os.homedir(), ".config", "opencode")
+    } else if (args.target === "openclaw") {
+      outputRoot = path.join(os.homedir(), ".config", "openclaw")
+    } else {
+      outputRoot = path.join(os.homedir(), ".codex")
+    }
 
     if (args.target === "opencode") {
       await syncToOpenCode(config, outputRoot)
+    } else if (args.target === "openclaw") {
+      await syncToOpenClaw(config, outputRoot)
     } else {
       await syncToCodex(config, outputRoot)
     }
