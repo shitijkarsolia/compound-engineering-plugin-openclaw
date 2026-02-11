@@ -6,6 +6,10 @@
   "bin": {
     "compound-plugin": "./src/index.ts"
   },
+  "exports": {
+    ".": "./src/index.ts",
+    "./openclaw": "./src/openclaw.ts"
+  },
   "publishConfig": {
     "access": "public"
   },
